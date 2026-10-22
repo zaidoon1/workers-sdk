@@ -27,6 +27,19 @@ const workerTest = dedent`
 	});
 `;
 
+const rootConfig = dedent`
+	export default {
+		worker: {
+			name: "test-worker",
+			compatibilityDate: "2025-12-02",
+			entrypoint: "./index.ts",
+			env: {
+				MY_TEXT: { type: "text", value: "from the new config" },
+			},
+		},
+	};
+`;
+
 test("loads cloudflare.config.ts from the project root", async ({
 	expect,
 	seed,
@@ -34,20 +47,9 @@ test("loads cloudflare.config.ts from the project root", async ({
 }) => {
 	await seed({
 		"vitest.config.mts": vitestConfig({
-			experimental: { newConfig: true },
+			config: true,
 		}),
-		"cloudflare.config.ts": dedent`
-			export default {
-				worker: {
-					name: "test-worker",
-					compatibilityDate: "2025-12-02",
-					entrypoint: "./index.ts",
-					env: {
-						MY_TEXT: { type: "text", value: "from the new config" },
-					},
-				},
-			};
-		`,
+		"cloudflare.config.ts": rootConfig,
 		"index.ts": worker,
 		"index.test.ts": workerTest,
 	});
@@ -57,7 +59,7 @@ test("loads cloudflare.config.ts from the project root", async ({
 	await expect(result.exitCode).resolves.toBe(0);
 });
 
-test("binds the config's own Durable Objects, Workflows, Worker and secrets", async ({
+test("rejects the removed `experimental.newConfig` option", async ({
 	expect,
 	seed,
 	vitestRun,
@@ -65,6 +67,27 @@ test("binds the config's own Durable Objects, Workflows, Worker and secrets", as
 	await seed({
 		"vitest.config.mts": vitestConfig({
 			experimental: { newConfig: true },
+		}),
+		"cloudflare.config.ts": rootConfig,
+		"index.test.ts": "",
+	});
+
+	const result = await vitestRun();
+
+	expect(await result.exitCode).toBe(1);
+	expect(result.stderr).toMatch(
+		"`experimental.newConfig` has been removed. Use `config` instead."
+	);
+});
+
+test("binds the config's own Durable Objects, Workflows, Worker and secrets", async ({
+	expect,
+	seed,
+	vitestRun,
+}) => {
+	await seed({
+		"vitest.config.mts": vitestConfig({
+			config: true,
 		}),
 		"cloudflare.config.ts": dedent`
 			export default {
@@ -149,7 +172,7 @@ test("merges `miniflare` queue consumers and assets with the config's", async ({
 }) => {
 	await seed({
 		"vitest.config.mts": vitestConfig({
-			experimental: { newConfig: true },
+			config: true,
 			miniflare: {
 				compatibilityDate: "2025-12-02",
 				compatibilityFlags: ["nodejs_compat"],
@@ -209,16 +232,14 @@ test("merges `miniflare` queue consumers and assets with the config's", async ({
 	expect(result.stdout).toMatch("2 passed");
 });
 
-test("resolves a custom configPath and its entrypoint", async ({
+test("resolves a custom config path and its entrypoint", async ({
 	expect,
 	seed,
 	vitestRun,
 }) => {
 	await seed({
 		"vitest.config.mts": vitestConfig({
-			experimental: {
-				newConfig: { configPath: "./config/cloudflare.config.ts" },
-			},
+			config: "./config/cloudflare.config.ts",
 		}),
 		// `entrypoint` is resolved relative to the config file, not the project root
 		"config/cloudflare.config.ts": dedent`
@@ -249,7 +270,7 @@ test("defaults config functions to test mode", async ({
 }) => {
 	await seed({
 		"vitest.config.mts": vitestConfig({
-			experimental: { newConfig: true },
+			config: true,
 		}),
 		"cloudflare.config.ts": dedent`
 			export default (ctx) => ({
@@ -286,7 +307,7 @@ test("overrides config function mode with --mode", async ({
 }) => {
 	await seed({
 		"vitest.config.mts": vitestConfig({
-			experimental: { newConfig: true },
+			config: true,
 		}),
 		"cloudflare.config.ts": dedent`
 			export default (ctx) => ({
@@ -317,7 +338,7 @@ test("overrides config function mode with --mode", async ({
 });
 
 describe("validation", () => {
-	test("rejects `wrangler` combined with `experimental.newConfig`", async ({
+	test("rejects `wrangler` combined with `config`", async ({
 		expect,
 		seed,
 		vitestRun,
@@ -325,7 +346,7 @@ describe("validation", () => {
 		await seed({
 			"vitest.config.mts": vitestConfig({
 				wrangler: { configPath: "./wrangler.jsonc" },
-				experimental: { newConfig: true },
+				config: true,
 			}),
 			"index.test.ts": "",
 		});
@@ -334,7 +355,7 @@ describe("validation", () => {
 
 		expect(await result.exitCode).toBe(1);
 		expect(result.stderr).toMatch(
-			"`wrangler` cannot be used together with `experimental.newConfig`. Configure the Worker via `cloudflare.config.ts` instead."
+			"`wrangler` and `config` cannot be used together. Use `wrangler` to load a Wrangler configuration file, or `config` to load `cloudflare.config.ts`."
 		);
 	});
 
@@ -346,7 +367,7 @@ describe("validation", () => {
 	}) => {
 		await seed({
 			"vitest.config.mts": vitestConfig({
-				experimental: { newConfig: true },
+				config: true,
 			}),
 			"index.test.ts": "",
 		});
@@ -355,7 +376,28 @@ describe("validation", () => {
 
 		expect(await result.exitCode).toBe(1);
 		expect(result.stderr).toMatch(
-			`\`experimental.newConfig\` is enabled but no \`cloudflare.config.ts\` was found at ${path.join(tmpPath, "cloudflare.config.ts")}`
+			`\`config\` is enabled but no \`cloudflare.config.ts\` was found at ${path.join(tmpPath, "cloudflare.config.ts")}`
+		);
+	});
+
+	test("suggests `wrangler` for a Wrangler config passed to `config`", async ({
+		expect,
+		seed,
+		vitestRun,
+	}) => {
+		await seed({
+			"vitest.config.mts": vitestConfig({
+				config: "./wrangler.jsonc",
+			}),
+			"wrangler.jsonc": "{}",
+			"index.test.ts": "",
+		});
+
+		const result = await vitestRun();
+
+		expect(await result.exitCode).toBe(1);
+		expect(result.stderr).toMatch(
+			"`wrangler.jsonc` looks like a Wrangler configuration file. Load it with `wrangler: { configPath }` instead of `config`."
 		);
 	});
 
@@ -366,7 +408,7 @@ describe("validation", () => {
 	}) => {
 		await seed({
 			"vitest.config.mts": vitestConfig({
-				experimental: { newConfig: true },
+				config: true,
 			}),
 			"cloudflare.config.ts": dedent`
 				export default { accountId: "abc123" };
@@ -385,7 +427,7 @@ describe("validation", () => {
 	test("reports an invalid config", async ({ expect, seed, vitestRun }) => {
 		await seed({
 			"vitest.config.mts": vitestConfig({
-				experimental: { newConfig: true },
+				config: true,
 			}),
 			// `compatibilityDate` is required
 			"cloudflare.config.ts": dedent`

@@ -92,9 +92,9 @@ describe("remote bindings", () => {
 		const { parseProjectOptions } = await import("../src/pool/config");
 
 		const options = await parseProjectOptions(project, {
-			experimental: { newConfig: true },
+			config: true,
 		});
-		await parseProjectOptions(project, { experimental: { newConfig: true } });
+		await parseProjectOptions(project, { config: true });
 
 		const [[details, , auth, context], [, , secondAuth]] =
 			maybeStartOrUpdateRemoteProxySession.mock.calls;
