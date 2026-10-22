@@ -1,5 +1,17 @@
 # @cloudflare/vite-plugin
 
+## 1.65.1
+
+### Patch Changes
+
+- [#16373](https://github.com/cloudflare/workers-sdk/pull/16373) [`8cc5f87`](https://github.com/cloudflare/workers-sdk/commit/8cc5f8761042f8046e520ecb6a1c541492700390) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - Report unsupported remote bindings under Bun instead of hanging
+
+  Starting remote bindings now fails with an actionable error explaining Bun's unsupported request routing. Use Node.js or disable remote bindings to continue local development.
+
+- [#16379](https://github.com/cloudflare/workers-sdk/pull/16379) [`160e655`](https://github.com/cloudflare/workers-sdk/commit/160e655cb02373882057dc7b9f027b31adef8df9) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - Update the local Workflow runtime to use native storage cleanup
+
+  Consume the Miniflare fix that queues Workflow persistence deletion with instance recreation, including deletion through the local Explorer. This prevents storage cleanup from racing reuse of the same Workflow instance ID.
+
 ## 1.65.0
 
 ### Minor Changes
