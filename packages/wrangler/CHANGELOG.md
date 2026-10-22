@@ -1,5 +1,13 @@
 # wrangler
 
+## 4.152.1
+
+### Patch Changes
+
+- [#16405](https://github.com/cloudflare/workers-sdk/pull/16405) [`c709bff`](https://github.com/cloudflare/workers-sdk/commit/c709bff0e48b1baffe7aeb77a840cb9734d00346) Thanks [@ondraulehla](https://github.com/ondraulehla)! - Fix `kv key list` returning only the first 1000 keys in local mode
+
+  Listing a local namespace with more than 1000 keys stopped after the first 1000 without any warning, so the output looked complete when it wasn't. `kv key list` now returns every key in local mode, with or without `--prefix`.
+
 ## 4.152.0
 
 ### Minor Changes
